@@ -26,6 +26,7 @@ Methodology choices, and why each one matters for honest metrics:
 """
 
 import json
+from pathlib import Path
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
@@ -38,14 +39,13 @@ import xgboost as xgb
 import joblib
 
 from features import build_features, FEATURE_COLUMNS
-from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
+DATA_PATH = PROJECT_ROOT / "data" / "transactions.csv"
 MODEL_DIR = PROJECT_ROOT / "models"
 REPORT_DIR = PROJECT_ROOT / "reports"
-
-DATA_PATH = DATA_DIR / "transactions.csv"
+MODEL_DIR.mkdir(parents=True, exist_ok=True)
+REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Cost assumptions -- made explicit and tunable, not hidden inside the model.
 COST_FALSE_POSITIVE = 150     # INR: analyst time to review a flagged-but-clean txn
@@ -187,8 +187,8 @@ def main():
     print(importances.head(8).to_string())
 
     # --- Save everything ---
-    joblib.dump(xgb_model, f"{MODEL_DIR}/xgb_fraud_model.joblib")
-    joblib.dump({"scaler": scaler, "model": lr}, f"{MODEL_DIR}/lr_baseline.joblib")
+    joblib.dump(xgb_model, MODEL_DIR / "xgb_fraud_model.joblib")
+    joblib.dump({"scaler": scaler, "model": lr}, MODEL_DIR / "lr_baseline.joblib")
 
     report = dict(
         data_summary=dict(
@@ -210,7 +210,7 @@ def main():
         ),
         top_features=importances.head(10).to_dict(),
     )
-    with open(f"{REPORT_DIR}/metrics_report.json", "w") as f:
+    with open(REPORT_DIR / "metrics_report.json", "w") as f:
         json.dump(report, f, indent=2)
 
     print(f"\nSaved model to {MODEL_DIR}/xgb_fraud_model.joblib")

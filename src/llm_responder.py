@@ -26,24 +26,52 @@ action taken by this system is traceable end to end.
 
 import json
 import os
+from pathlib import Path
 from datetime import datetime, timezone
 
-try:
-    import anthropic
-    _CLIENT = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY from env
-except Exception:
-    _CLIENT = None
-
-MODEL = "claude-sonnet-5"          # good default: strong reasoning, low cost
-FALLBACK_MODEL = "claude-haiku-4-5-20251001"  # cheaper/faster if running at high volume
-from pathlib import Path
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
-MODEL_DIR = PROJECT_ROOT / "models"
-REPORT_DIR = PROJECT_ROOT / "reports"
 
-AUDIT_LOG_PATH = REPORT_DIR / "audit_trail.jsonl"
+# --- Provider-agnostic LLM client setup -------------------------------
+# Aegis works with whichever provider's API key is present in the
+# environment, checked in this priority order. No code changes needed
+# to switch providers -- just set a different key before running.
+#
+# Model names are overridable via env vars so this doesn't go stale as
+# providers ship new versions -- check each provider's docs if a default
+# below stops working.
+
+ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-5")
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
+
+_PROVIDER = None
+_CLIENT = None
+
+if os.environ.get("ANTHROPIC_API_KEY"):
+    try:
+        import anthropic
+        _CLIENT = anthropic.Anthropic()
+        _PROVIDER = "anthropic"
+    except Exception:
+        pass
+
+if _CLIENT is None and os.environ.get("OPENAI_API_KEY"):
+    try:
+        import openai
+        _CLIENT = openai.OpenAI()
+        _PROVIDER = "openai"
+    except Exception:
+        pass
+
+if _CLIENT is None and (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")):
+    try:
+        from google import genai
+        _CLIENT = genai.Client(api_key=os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))
+        _PROVIDER = "gemini"
+    except Exception:
+        pass
+
+AUDIT_LOG_PATH = PROJECT_ROOT / "reports" / "audit_trail.jsonl"
 
 EXPLAIN_SYSTEM_PROMPT = """You are a fraud-risk explainer for an analyst dashboard.
 You are given a flagged transaction's feature values and the model's risk score.
@@ -90,25 +118,52 @@ Merchant category: {txn_row.get('merchant_category', 'n/a')}
 """.strip()
 
 
-def _call_claude(system_prompt, user_content, model=MODEL, max_tokens=400):
+def _call_llm(system_prompt, user_content, max_tokens=400):
+    """Dispatches to whichever provider was detected at import time.
+    Same (text, error) contract regardless of provider, so the rest of
+    this module never needs to know which one is actually running."""
     if _CLIENT is None:
-        return None, "ANTHROPIC_API_KEY not set in this environment -- see README to run live."
-    try:
-        resp = _CLIENT.messages.create(
-            model=model, max_tokens=max_tokens,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_content}],
+        return None, (
+            "No LLM API key found. Set ONE of ANTHROPIC_API_KEY, OPENAI_API_KEY, "
+            "or GEMINI_API_KEY / GOOGLE_API_KEY in your environment -- see README."
         )
-        text = "".join(b.text for b in resp.content if b.type == "text")
-        return text, None
+    try:
+        if _PROVIDER == "anthropic":
+            resp = _CLIENT.messages.create(
+                model=ANTHROPIC_MODEL, max_tokens=max_tokens,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_content}],
+            )
+            text = "".join(b.text for b in resp.content if b.type == "text")
+            return text, None
+
+        elif _PROVIDER == "openai":
+            resp = _CLIENT.chat.completions.create(
+                model=OPENAI_MODEL, max_tokens=max_tokens,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content},
+                ],
+            )
+            return resp.choices[0].message.content, None
+
+        elif _PROVIDER == "gemini":
+            resp = _CLIENT.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=user_content,
+                config={"system_instruction": system_prompt, "max_output_tokens": max_tokens},
+            )
+            return resp.text, None
+
+        return None, f"Unknown provider: {_PROVIDER}"
     except Exception as e:
-        return None, f"LLM call failed: {e}"
+        return None, f"LLM call failed ({_PROVIDER}): {e}"
 
 
 def explain_flagged_transaction(txn_row, risk_score):
     """Bounded action: produces an explanation only. No account/txn action taken."""
     snapshot = _feature_snapshot_text(txn_row, risk_score)
-    text, error = _call_claude(EXPLAIN_SYSTEM_PROMPT, snapshot)
+    text, error = _call_llm(EXPLAIN_SYSTEM_PROMPT, snapshot)
     result = {
         "transaction_id": txn_row.get("transaction_id"),
         "risk_score": float(risk_score),
@@ -124,7 +179,7 @@ def explain_flagged_transaction(txn_row, risk_score):
 def draft_chargeback_evidence(txn_row, risk_score):
     """Bounded + gated action: produces a DRAFT only. Never auto-submitted."""
     snapshot = _feature_snapshot_text(txn_row, risk_score)
-    text, error = _call_claude(EVIDENCE_SYSTEM_PROMPT, snapshot, max_tokens=600)
+    text, error = _call_llm(EVIDENCE_SYSTEM_PROMPT, snapshot, max_tokens=600)
     result = {
         "transaction_id": txn_row.get("transaction_id"),
         "risk_score": float(risk_score),
@@ -167,10 +222,10 @@ if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from features import build_features
 
-    raw = pd.read_csv(DATA_DIR / "transactions.csv")
+    raw = pd.read_csv(PROJECT_ROOT / "data" / "transactions.csv")
     raw["timestamp"] = pd.to_datetime(raw["timestamp"])
     feat_df, feature_cols, _, _ = build_features(raw)
-    model = joblib.load(MODEL_DIR / "xgb_fraud_model.joblib")
+    model = joblib.load(PROJECT_ROOT / "models" / "xgb_fraud_model.joblib")
     feat_df["risk_score"] = model.predict_proba(feat_df[feature_cols])[:, 1]
 
     flagged = feat_df[(feat_df.is_fraud == 1)].sort_values("risk_score", ascending=False).iloc[0]

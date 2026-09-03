@@ -3,4 +3,10 @@ numpy
 scikit-learn
 xgboost
 joblib
-anthropic
+
+# LLM provider SDKs -- you only need to install (and get a key for) ONE
+# of these. Aegis auto-detects whichever API key is set in your
+# environment and uses the matching provider.
+anthropic       # for ANTHROPIC_API_KEY
+openai          # for OPENAI_API_KEY
+google-genai    # for GEMINI_API_KEY or GOOGLE_API_KEY

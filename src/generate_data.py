@@ -21,13 +21,12 @@ Fraud patterns injected (all under one class of loss: transaction fraud):
 
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
 from pathlib import Path
+from datetime import datetime, timedelta
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
-MODEL_DIR = PROJECT_ROOT / "models"
-REPORT_DIR = PROJECT_ROOT / "reports"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 RNG_SEED = 42
 rng = np.random.default_rng(RNG_SEED)
@@ -156,7 +155,6 @@ def main():
     df = df[["transaction_id", "user_id", "timestamp", "amount",
              "merchant_category", "device_id", "country", "is_fraud", "fraud_type"]]
 
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
     df.to_csv(DATA_DIR / "transactions.csv", index=False)
 
     print(f"\nTotal transactions: {len(df):,}")
@@ -164,7 +162,7 @@ def main():
     print("\nFraud type breakdown:")
     print(df[df.is_fraud == 1]["fraud_type"].value_counts())
     print(f"\nDate range: {df.timestamp.min()} -> {df.timestamp.max()}")
-    print("\nSaved to data/transactions.csv")
+    print(f"\nSaved to {DATA_DIR / 'transactions.csv'}")
 
 
 if __name__ == "__main__":

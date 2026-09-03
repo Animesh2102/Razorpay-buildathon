@@ -15,11 +15,11 @@ layer that explains flags and drafts chargeback evidence. Built against the
 Track 02 bar: **honest metrics including false-positive cost, strictly
 defense-only.**
 
-## The pitch, in one paragraph
+## Project Overview
 
 Fraud is one clean, measurable class of loss — so this is where the "bar"
 gets proven with numbers, not vibes. An XGBoost model scores every
-transaction using only that user's *prior* history (zero look-ahead leakage).
+transaction using only that user's _prior_ history (zero look-ahead leakage).
 A cost-sensitive threshold, tuned exclusively on a validation slice, decides
 what gets flagged. Everything above that line goes to an LLM layer that
 explains the risk and drafts — never sends — chargeback evidence. Every
@@ -27,24 +27,24 @@ decision, human or automated, lands in an append-only audit log.
 
 ## Results (held-out test set — the last 15% of the timeline, never touched during training or threshold selection)
 
-| Metric | Value |
-|---|---|
-| PR-AUC (XGBoost) | 0.921 |
-| PR-AUC (Logistic Regression baseline) | 0.836 |
-| Precision @ chosen threshold (0.32) | 70.2% |
-| Recall @ chosen threshold (0.32) | 91.3% |
-| Fraud caught (test batch) | ₹2,85,066 |
-| Fraud missed (test batch) | ₹17,394 |
-| Analyst review cost incurred (false positives) | ₹4,650 |
-| **Total cost at chosen threshold** | **₹22,044** |
-| Cost if flagging nothing | ₹3,02,460 |
-| Cost if flagging everything | ₹23,04,000 |
+| Metric                                         | Value       |
+| ---------------------------------------------- | ----------- |
+| PR-AUC (XGBoost)                               | 0.921       |
+| PR-AUC (Logistic Regression baseline)          | 0.836       |
+| Precision @ chosen threshold (0.32)            | 70.2%       |
+| Recall @ chosen threshold (0.32)               | 91.3%       |
+| Fraud caught (test batch)                      | ₹2,85,066   |
+| Fraud missed (test batch)                      | ₹17,394     |
+| Analyst review cost incurred (false positives) | ₹4,650      |
+| **Total cost at chosen threshold**             | **₹22,044** |
+| Cost if flagging nothing                       | ₹3,02,460   |
+| Cost if flagging everything                    | ₹23,04,000  |
 
 The threshold isn't "best F1" — it's the point that minimizes ₹ cost on a
 validation slice, then gets frozen and applied once to test data. That's
 the difference between a real fraud-ops answer and a leaderboard score.
 
-## Why these specific engineering choices (say this in the pitch)
+## Why these specific engineering choices
 
 - **Time-based split, not random shuffle.** A random shuffle lets the model
   see a user's post-fraud behavior while scoring an earlier transaction —
@@ -61,7 +61,7 @@ the difference between a real fraud-ops answer and a leaderboard score.
   is sensitive and unavailable to a hackathon entrant. We simulated 1,800
   user behavioral baselines and injected three named fraud patterns
   (account takeover, card testing, velocity abuse) at a realistic ~0.5%
-  incidence. This proves the *pipeline and methodology* are sound; it does
+  incidence. This proves the _pipeline and methodology_ are sound; it does
   not prove real-world generalization — adversarial adaptation, seasonal
   drift, and correlated fraud rings in real data are not captured here.
 
@@ -86,6 +86,7 @@ OpenAI, or Gemini -- it auto-detects whichever API key (`ANTHROPIC_API_KEY`,
 `OPENAI_API_KEY`, or `GEMINI_API_KEY`/`GOOGLE_API_KEY`) is set and uses that
 provider, no code changes needed. It is deliberately bounded regardless of
 provider:
+
 - It **never** blocks a transaction, freezes an account, or bans a device.
 - Chargeback evidence is always a **draft** (`requires_human_approval: True`)
   — nothing is auto-submitted.
@@ -145,7 +146,7 @@ and 0.36 on another. The conclusions are stable across both runs we tested
 (~90% recall, ~70-76% precision, ~₹22K total cost vs. ~₹3L catching
 nothing) — only the third decimal place moves.
 
-## Honest limitations (say these upfront in the pitch — reviewers trust builders who name the edges themselves)
+## Honest limitations
 
 1. Synthetic data proves the methodology, not real-world fraud rates.
 2. Three fraud patterns are modeled; real fraud rings adapt faster than any

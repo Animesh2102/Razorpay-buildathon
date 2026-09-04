@@ -9,26 +9,26 @@
   },
   "pr_auc": {
     "logistic_regression_baseline": 0.8364803300131104,
-    "xgboost": 0.9209082004496695
+    "xgboost": 0.921824111831096
   },
   "cost_assumptions": {
     "cost_per_false_positive_inr": 150,
     "cost_per_false_negative": "actual missed fraud amount (Rs)"
   },
-  "chosen_threshold": 0.32,
+  "chosen_threshold": 0.36000000000000004,
   "test_set_metrics_at_chosen_threshold": {
-    "threshold": 0.32,
-    "tp": 73,
-    "fp": 31,
-    "fn": 7,
-    "tn": 15329,
-    "precision": 0.7019230769230769,
-    "recall": 0.9125,
-    "f1": 0.7934782608695652,
-    "fraud_amount_caught": 285066.14999999997,
-    "fraud_amount_missed": 17393.93,
-    "analyst_review_cost": 4650.0,
-    "total_cost": 22043.93
+    "threshold": 0.36000000000000004,
+    "tp": 72,
+    "fp": 23,
+    "fn": 8,
+    "tn": 15337,
+    "precision": 0.7578947368421053,
+    "recall": 0.9,
+    "f1": 0.8228571428571428,
+    "fraud_amount_caught": 283460.33999999997,
+    "fraud_amount_missed": 18999.74,
+    "analyst_review_cost": 3450.0,
+    "total_cost": 22449.74
   },
   "test_set_metrics_at_default_0_5_threshold": {
     "threshold": 0.5,
@@ -49,15 +49,15 @@
     "flag_everything_cost_inr": 2304000.0
   },
   "top_features": {
-    "is_new_device": 0.2127320021390915,
-    "is_first_txn_for_user": 0.1870013326406479,
-    "minutes_since_last_txn": 0.1495112031698227,
-    "txn_count_last_1h": 0.1347176730632782,
-    "txn_count_last_24h": 0.06100896745920181,
-    "amount_zscore": 0.043820105493068695,
-    "amount": 0.03984494507312775,
-    "log_amount": 0.030841238796710968,
-    "is_odd_hour": 0.022023102268576622,
-    "user_hist_count": 0.019946010783314705
+    "is_new_device": 0.23069719970226288,
+    "minutes_since_last_txn": 0.21483214199543,
+    "is_first_txn_for_user": 0.10971993207931519,
+    "txn_count_last_1h": 0.08116668462753296,
+    "amount_zscore": 0.05598563700914383,
+    "amount": 0.04884913191199303,
+    "txn_count_last_24h": 0.043964821845293045,
+    "is_odd_hour": 0.043040625751018524,
+    "log_amount": 0.022765329107642174,
+    "user_hist_count": 0.021178489550948143
   }
 }

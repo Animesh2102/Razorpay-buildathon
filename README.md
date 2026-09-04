@@ -7,7 +7,7 @@ pip install -r requirements.txt
 python3 src/train_eval.py        # trains + evaluates on included synthetic data, prints metrics
 python3 src/llm_responder.py     # LLM explainer demo (set an API key first for live output -- see below)
 ```
-Data and a trained model are already included — no setup beyond `pip install` needed to see results.
+Data is already included — simply run the training script to generate the model for your specific system.
 
 Aegis is a transaction-fraud detector paired with a bounded, human-gated LLM
 layer that explains flags and drafts chargeback evidence. Built against the

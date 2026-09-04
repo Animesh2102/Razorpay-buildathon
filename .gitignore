@@ -12,3 +12,5 @@ reports/audit_trail.jsonl
 data/paysim/*.csv
 data/paysim/
 
+models/*.joblib
+

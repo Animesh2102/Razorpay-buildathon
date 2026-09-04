@@ -1,0 +1,37 @@
+{
+  "dataset": "PaySim (real-world-modeled, Kaggle)",
+  "rows": 6362620,
+  "fraud_count": 8213,
+  "fraud_rate_pct": 0.12908204481801522,
+  "pr_auc": {
+    "logistic_regression_baseline": 0.99847827133011,
+    "xgboost": 0.9997506216166229
+  },
+  "chosen_threshold": 0.85,
+  "test_set_metrics": {
+    "threshold": 0.85,
+    "tp": 4002,
+    "fp": 0,
+    "fn": 6,
+    "tn": 950385,
+    "precision": 1.0,
+    "recall": 0.9985029940119761,
+    "f1": 0.9992509363295881,
+    "fraud_amount_caught": 6276121600.0,
+    "fraud_amount_missed": 47300344.0,
+    "analyst_review_cost": 0.0,
+    "total_cost": 47300344.0
+  },
+  "catch_nothing_cost": 6323422208.0,
+  "top_features": {
+    "is_full_balance_drain": 0.5783150792121887,
+    "type_PAYMENT": 0.2721218466758728,
+    "type_DEBIT": 0.07376977801322937,
+    "orig_balance_zeroed": 0.02132236398756504,
+    "errorBalanceOrig": 0.020185457542538643,
+    "dest_both_zero": 0.010380552150309086,
+    "amount": 0.005439345259219408,
+    "type_CASH_IN": 0.0043276515789330006
+  },
+  "known_limitation": "97.8% of PaySim fraud cases fully drain the account balance (amount == oldbalanceOrg) vs 0% of legitimate transactions -- an almost deterministic signal. High scores here partly reflect this known simplicity of PaySim's fraud simulation, not a claim that real-world fraud is this separable."
+}

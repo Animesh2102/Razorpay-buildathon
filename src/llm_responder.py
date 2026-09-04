@@ -212,10 +212,55 @@ def handle_llm_failure_gracefully(txn_row, risk_score):
     return fallback
 
 
+def load_frozen_threshold():
+    """Loads the cost-optimal threshold that train_eval.py computed on
+    validation data and froze. This is the actual link between the ML
+    pipeline and this response layer -- without it, 'threshold gate' is
+    just a diagram, not running code."""
+    report_path = PROJECT_ROOT / "reports" / "metrics_report.json"
+    with open(report_path) as f:
+        report = json.load(f)
+    return report["chosen_threshold"]
+
+
+def route_transaction(txn_row, risk_score, threshold=None):
+    """The actual Threshold Gate. Every transaction goes through this.
+    Below threshold -> approved automatically, no LLM call, no cost.
+    At or above threshold -> routed to the LLM layer for explanation
+    and (if applicable) an evidence draft. This is what makes the
+    architecture diagram real rather than aspirational."""
+    if threshold is None:
+        threshold = load_frozen_threshold()
+
+    if risk_score < threshold:
+        result = {
+            "transaction_id": txn_row.get("transaction_id"),
+            "risk_score": float(risk_score),
+            "threshold": float(threshold),
+            "decision": "APPROVED",
+            "action_taken": "none - below cost-optimal threshold",
+            "requires_human_approval": False,
+        }
+        _log_audit("routing_decision", txn_row.get("transaction_id"), result)
+        return result
+
+    explanation = explain_flagged_transaction(txn_row, risk_score)
+    result = {
+        "transaction_id": txn_row.get("transaction_id"),
+        "risk_score": float(risk_score),
+        "threshold": float(threshold),
+        "decision": "FLAGGED",
+        "explanation": explanation,
+        "requires_human_approval": True,
+    }
+    _log_audit("routing_decision", txn_row.get("transaction_id"), result)
+    return result
+
+
 if __name__ == "__main__":
-    # Demo using a real flagged transaction from the test set (no API key
-    # needed to see the bounded/audited behavior -- the LLM call will report
-    # "not configured" gracefully rather than crashing).
+    # Demo using real transactions from the test set (no API key needed to
+    # see the bounded/audited/gated behavior -- LLM calls will report "no
+    # key found" gracefully rather than crashing).
     import pandas as pd
     import joblib
     import sys
@@ -228,12 +273,19 @@ if __name__ == "__main__":
     model = joblib.load(PROJECT_ROOT / "models" / "xgb_fraud_model.joblib")
     feat_df["risk_score"] = model.predict_proba(feat_df[feature_cols])[:, 1]
 
-    flagged = feat_df[(feat_df.is_fraud == 1)].sort_values("risk_score", ascending=False).iloc[0]
+    threshold = load_frozen_threshold()
+    print(f"Loaded frozen threshold from reports/metrics_report.json: {threshold}\n")
 
-    print("=== Explanation demo ===")
-    print(json.dumps(explain_flagged_transaction(flagged, flagged["risk_score"]), indent=2, default=str))
+    flagged = feat_df[feat_df.is_fraud == 1].sort_values("risk_score", ascending=False).iloc[0]
+    approved = feat_df[(feat_df.risk_score < threshold)].sample(1, random_state=1).iloc[0]
 
-    print("\n=== Chargeback evidence draft demo ===")
+    print("=== Routing demo: a genuinely flagged transaction (score above threshold) ===")
+    print(json.dumps(route_transaction(flagged, flagged["risk_score"], threshold), indent=2, default=str))
+
+    print("\n=== Routing demo: a genuinely approved transaction (score below threshold) ===")
+    print(json.dumps(route_transaction(approved, approved["risk_score"], threshold), indent=2, default=str))
+
+    print("\n=== Chargeback evidence draft demo (on the flagged case) ===")
     print(json.dumps(draft_chargeback_evidence(flagged, flagged["risk_score"]), indent=2, default=str))
 
     print("\n=== Graceful failure fallback demo ===")

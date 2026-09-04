@@ -5,3 +5,8 @@ __pycache__/
 venv/
 .venv/
 reports/audit_trail.jsonl
+
+# PaySim raw CSV is ~490MB -- exceeds GitHub's 100MB file limit and
+# shouldn't be committed. Download it yourself from Kaggle and place it
+# at data/paysim/PS_log.csv to reproduce the real-data validation.
+data/paysim/*.csv

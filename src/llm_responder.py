@@ -65,6 +65,8 @@ if _CLIENT is None and os.environ.get("OPENAI_API_KEY"):
 
 if _CLIENT is None and (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")):
     try:
+        import logging
+        logging.getLogger("google_genai.models").setLevel(logging.ERROR)
         from google import genai
         _CLIENT = genai.Client(api_key=os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))
         _PROVIDER = "gemini"
@@ -148,11 +150,25 @@ def _call_llm(system_prompt, user_content, max_tokens=400):
             return resp.choices[0].message.content, None
 
         elif _PROVIDER == "gemini":
-            resp = _CLIENT.models.generate_content(
-                model=GEMINI_MODEL,
-                contents=user_content,
-                config={"system_instruction": system_prompt, "max_output_tokens": max_tokens},
-            )
+            try:
+                resp = _CLIENT.models.generate_content(
+                    model=GEMINI_MODEL,
+                    contents=user_content,
+                    config={
+                        "system_instruction": system_prompt,
+                        "max_output_tokens": max(max_tokens, 1500),
+                        "thinking_config": {"thinking_level": "minimal"},
+                    },
+                )
+            except Exception:
+                resp = _CLIENT.models.generate_content(
+                    model=GEMINI_MODEL,
+                    contents=user_content,
+                    config={
+                        "system_instruction": system_prompt,
+                        "max_output_tokens": max(max_tokens, 3000),
+                    },
+                )
             return resp.text, None
 
         return None, f"Unknown provider: {_PROVIDER}"

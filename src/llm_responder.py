@@ -70,7 +70,8 @@ if _CLIENT is None and (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOG
         from google import genai
         _CLIENT = genai.Client(api_key=os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))
         _PROVIDER = "gemini"
-    except Exception:
+    except Exception as e:
+        print(f"DEBUG IMPORT ERROR: {e}")
         pass
 
 AUDIT_LOG_PATH = PROJECT_ROOT / "reports" / "audit_trail.jsonl"

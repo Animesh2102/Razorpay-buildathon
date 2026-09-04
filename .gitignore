@@ -10,3 +10,5 @@ reports/audit_trail.jsonl
 # shouldn't be committed. Download it yourself from Kaggle and place it
 # at data/paysim/PS_log.csv to reproduce the real-data validation.
 data/paysim/*.csv
+data/paysim/
+
